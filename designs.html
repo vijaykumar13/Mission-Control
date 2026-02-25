@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control — Design Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0C0A09; color: #FAFAF9; }
+
+  /* Navigation */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(12,10,9,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid #292524; padding: 16px 40px; display: flex; align-items: center; gap: 32px; }
+  nav h1 { font-size: 20px; font-weight: 600; color: #FAFAF9; white-space: nowrap; }
+  nav .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  nav .tab { padding: 6px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; border: 1px solid #292524; background: transparent; color: #A8A29E; transition: all 0.2s; }
+  nav .tab:hover { background: #292524; color: #FAFAF9; }
+  nav .tab.active { background: #5B7FD6; border-color: #5B7FD6; color: #fff; }
+
+  /* Sections */
+  .section { display: none; padding: 100px 40px 60px; min-height: 100vh; }
+  .section.active { display: block; }
+  .section-title { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+  .section-desc { font-size: 16px; color: #78716C; margin-bottom: 40px; }
+
+  /* ============ 1. ARCHITECTURE ============ */
+  .arch-grid { display: flex; flex-direction: column; gap: 24px; max-width: 900px; }
+  .arch-layer { border-radius: 16px; padding: 24px; }
+  .arch-layer h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  .arch-layer .boxes { display: flex; gap: 12px; flex-wrap: wrap; }
+  .arch-layer .box { padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; }
+  .layer-ui { background: rgba(91,127,214,0.1); border: 1px solid rgba(91,127,214,0.3); }
+  .layer-ui h3 { color: #5B7FD6; }
+  .layer-ui .box { background: rgba(91,127,214,0.15); color: #93b4f5; }
+  .layer-api { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); }
+  .layer-api h3 { color: #8b5cf6; }
+  .layer-api .box { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+  .layer-data { display: flex; gap: 24px; }
+  .layer-data > div { flex: 1; border-radius: 16px; padding: 24px; }
+  .layer-db { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); }
+  .layer-db h3 { color: #22c55e; }
+  .layer-db .box { background: rgba(34,197,94,0.15); color: #86efac; }
+  .layer-int { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); }
+  .layer-int h3 { color: #f59e0b; }
+  .layer-int .box { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .arch-arrow { text-align: center; color: #57534E; font-size: 24px; }
+
+  /* ============ 2. DASHBOARD WIREFRAME ============ */
+  .app-frame { background: #FAFAF9; border-radius: 16px; overflow: hidden; display: flex; max-width: 1100px; min-height: 750px; border: 1px solid #E7E5E4; }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #E7E5E4; padding: 20px 12px; flex-shrink: 0; }
+  .sidebar .logo { font-size: 16px; font-weight: 700; color: #1C1917; margin-bottom: 24px; padding-left: 8px; }
+  .sidebar .nav-item { padding: 10px 12px; border-radius: 8px; font-size: 14px; color: #57534E; margin-bottom: 4px; cursor: pointer; }
+  .sidebar .nav-item:hover { background: #F5F5F4; }
+  .sidebar .nav-item.active { background: #EEF2FF; color: #5B7FD6; font-weight: 500; }
+  .main-content { flex: 1; padding: 24px 32px; overflow-y: auto; }
+  .greeting { font-size: 22px; font-weight: 600; color: #1C1917; }
+  .date-text { font-size: 14px; color: #78716C; margin-top: 4px; margin-bottom: 16px; }
+  .quick-capture { width: 100%; max-width: 520px; padding: 10px 16px; border: 1px solid #E7E5E4; border-radius: 10px; font-size: 14px; color: #A8A29E; background: #fff; margin-bottom: 24px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; padding: 16px 20px; }
+  .stat-card .number { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 13px; color: #78716C; margin-top: 2px; }
+  .blue { color: #5B7FD6; }
+  .amber { color: #f59e0b; }
+  .purple { color: #8b5cf6; }
+  .green { color: #22c55e; }
+
+  .widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .widget { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; padding: 20px; }
+  .widget h3 { font-size: 16px; font-weight: 600; color: #1C1917; margin-bottom: 14px; }
+  .widget-item { padding: 10px 0; border-bottom: 1px solid #F5F5F4; }
+  .widget-item:last-child { border-bottom: none; }
+  .widget-item .item-title { font-size: 14px; color: #1C1917; }
+  .widget-item .item-meta { font-size: 12px; color: #A8A29E; margin-top: 3px; }
+  .widget-item .item-meta.overdue { color: #ef4444; }
+  .widget-item .item-meta.synced { color: #f59e0b; }
+  .widget-item .item-meta.success { color: #22c55e; }
+
+  .checkbox { display: inline-block; width: 16px; height: 16px; border: 2px solid #D6D3D1; border-radius: 4px; margin-right: 10px; vertical-align: middle; }
+
+  /* ============ 3. PROJECTS PAGE ============ */
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .page-title { font-size: 22px; font-weight: 600; color: #1C1917; }
+  .btn-primary { padding: 10px 20px; background: #5B7FD6; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .filter-bar { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; padding: 10px 16px; background: #fff; border: 1px solid #E7E5E4; border-radius: 10px; }
+  .filter-tab { font-size: 14px; color: #78716C; cursor: pointer; padding: 4px 0; }
+  .filter-tab.active { color: #5B7FD6; border-bottom: 2px solid #5B7FD6; }
+  .search-input { margin-left: auto; padding: 6px 12px; border: 1px solid #E7E5E4; border-radius: 8px; font-size: 13px; background: #F5F5F4; color: #57534E; width: 180px; }
+
+  .project-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .project-card { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; padding: 20px; padding-left: 26px; position: relative; overflow: hidden; }
+  .project-card .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
+  .project-card h4 { font-size: 17px; font-weight: 600; color: #1C1917; margin-bottom: 8px; }
+  .project-card .badges { display: flex; gap: 8px; margin-bottom: 10px; }
+  .badge { padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .badge-active { background: #D1FAE5; color: #065F46; }
+  .badge-paused { background: #FEF3C7; color: #92400E; }
+  .badge-high { background: #FEE2E2; color: #991B1B; }
+  .badge-med { background: #FEF3C7; color: #92400E; }
+  .badge-low { background: #EEF2FF; color: #3730A3; }
+  .project-card .desc { font-size: 13px; color: #78716C; margin-bottom: 10px; }
+  .project-card .meta { font-size: 12px; color: #A8A29E; display: flex; align-items: center; gap: 12px; }
+  .progress-bar { width: 120px; height: 6px; background: #E7E5E4; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+
+  .linked-section { margin-top: 28px; }
+  .linked-section h3 { font-size: 16px; color: #f59e0b; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .synced-badge { padding: 2px 10px; background: #FEF3C7; border-radius: 6px; font-size: 11px; color: #92400E; }
+  .linked-card { background: #fff; border: 1px solid #E7E5E4; border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .linked-card .lc-title { font-size: 14px; color: #1C1917; font-weight: 500; }
+  .linked-card .lc-meta { font-size: 12px; color: #A8A29E; margin-top: 3px; }
+  .linked-card .lc-sync { font-size: 12px; color: #A8A29E; }
+
+  /* ============ 4. IDEAS BOARD ============ */
+  .kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; min-height: 550px; }
+  .kanban-col { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; padding: 16px; }
+  .kanban-col h3 { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .kanban-col h3 .count { font-size: 12px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+  .idea-card { background: #FAFAF9; border: 1px solid #E7E5E4; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .idea-card h5 { font-size: 14px; color: #1C1917; font-weight: 500; margin-bottom: 6px; }
+  .idea-card p { font-size: 12px; color: #78716C; line-height: 1.4; margin-bottom: 8px; }
+  .idea-tag { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+  .tag-ai { background: #EEF2FF; color: #3730A3; }
+  .tag-mobile { background: #F3E8FF; color: #6B21A8; }
+  .tag-dev { background: #FEF3C7; color: #92400E; }
+  .btn-promote { width: 100%; padding: 8px; background: #22c55e; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 4px; }
+  .drag-hint { text-align: center; font-size: 13px; color: #A8A29E; margin-top: 16px; }
+
+  /* ============ 5. KNOWLEDGE BASE ============ */
+  .kb-search { width: 100%; padding: 12px 18px; border: 1px solid #E7E5E4; border-radius: 10px; font-size: 14px; background: #fff; color: #57534E; margin-bottom: 16px; }
+  .tag-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tag-chip { padding: 5px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; }
+  .tag-chip.active { background: #1C1917; color: #fff; }
+  .tag-chip.dev { background: #EEF2FF; color: #3730A3; }
+  .tag-chip.ai { background: #F3E8FF; color: #6B21A8; }
+  .tag-chip.design { background: #FEF3C7; color: #92400E; }
+  .tag-chip.process { background: #D1FAE5; color: #065F46; }
+
+  .pinned-section h3 { font-size: 16px; font-weight: 600; color: #1C1917; margin-bottom: 14px; }
+  .pinned-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .pinned-card { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; padding: 18px; }
+  .pinned-card h5 { font-size: 15px; color: #1C1917; font-weight: 500; margin-bottom: 6px; }
+  .pinned-card p { font-size: 12px; color: #78716C; line-height: 1.4; margin-bottom: 10px; }
+  .pinned-card .card-footer { display: flex; justify-content: space-between; align-items: center; }
+  .pinned-card .card-date { font-size: 11px; color: #A8A29E; }
+
+  .articles-list { background: #fff; border: 1px solid #E7E5E4; border-radius: 12px; overflow: hidden; }
+  .articles-header { display: flex; justify-content: space-between; padding: 14px 20px; font-size: 16px; font-weight: 600; color: #1C1917; border-bottom: 1px solid #E7E5E4; }
+  .articles-header span { font-size: 13px; color: #A8A29E; font-weight: 400; }
+  .article-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #F5F5F4; }
+  .article-row:last-child { border-bottom: none; }
+  .article-row .ar-title { font-size: 14px; color: #1C1917; font-weight: 500; }
+  .article-row .ar-desc { font-size: 12px; color: #78716C; margin-top: 3px; }
+  .article-row .ar-right { display: flex; align-items: center; gap: 12px; }
+  .article-row .ar-date { font-size: 12px; color: #A8A29E; }
+
+  /* ============ 6. DATA MODEL ============ */
+  .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; }
+  .entity-card { border-radius: 14px; padding: 20px; border: 2px solid; }
+  .entity-card h4 { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+  .entity-card .fields { font-size: 13px; line-height: 1.8; }
+  .entity-card .field-pk { color: #f59e0b; }
+  .entity-card .field-fk { color: #8b5cf6; }
+  .entity-card .field-name { color: #FAFAF9; }
+  .entity-card .field-type { color: #78716C; }
+  .e-projects { background: rgba(91,127,214,0.1); border-color: #5B7FD6; }
+  .e-projects h4 { color: #93b4f5; }
+  .e-tasks { background: rgba(34,197,94,0.1); border-color: #22c55e; }
+  .e-tasks h4 { color: #86efac; }
+  .e-ideas { background: rgba(139,92,246,0.1); border-color: #8b5cf6; }
+  .e-ideas h4 { color: #c4b5fd; }
+  .e-kb { background: rgba(6,182,212,0.1); border-color: #06b6d4; }
+  .e-kb h4 { color: #67e8f9; }
+  .e-tags { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
+  .e-tags h4 { color: #fcd34d; }
+  .e-activity { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+  .e-activity h4 { color: #fca5a5; }
+  .e-integration { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
+  .e-integration h4 { color: #fcd34d; }
+
+  .relationships { margin-top: 28px; max-width: 1000px; }
+  .relationships h3 { font-size: 18px; font-weight: 600; color: #FAFAF9; margin-bottom: 14px; }
+  .rel-list { display: flex; flex-direction: column; gap: 10px; }
+  .rel-item { display: flex; align-items: center; gap: 12px; font-size: 14px; padding: 10px 16px; background: rgba(255,255,255,0.05); border-radius: 10px; }
+  .rel-item .rel-arrow { color: #5B7FD6; font-weight: 600; }
+
+  /* ============ 7. INTEGRATION ARCH ============ */
+  .int-flow { display: flex; gap: 16px; max-width: 1100px; align-items: flex-start; }
+  .int-col { flex: 1; border-radius: 16px; padding: 20px; min-height: 400px; }
+  .int-col h3 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+  .int-col .int-box { padding: 12px 16px; border-radius: 10px; margin-bottom: 10px; font-size: 14px; }
+  .col-ext { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+  .col-ext h3 { color: #ef4444; }
+  .col-ext .int-box { background: rgba(239,68,68,0.1); color: #fca5a5; }
+  .col-adapt { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); }
+  .col-adapt h3 { color: #8b5cf6; }
+  .col-adapt .int-box { background: rgba(139,92,246,0.1); color: #c4b5fd; }
+  .col-adapt .iface { border: 2px dashed rgba(139,92,246,0.4); background: rgba(139,92,246,0.05); padding: 14px 16px; border-radius: 10px; margin-top: 16px; }
+  .col-adapt .iface h5 { font-size: 14px; color: #c4b5fd; margin-bottom: 6px; }
+  .col-adapt .iface p { font-size: 12px; color: #A8A29E; line-height: 1.6; }
+  .col-reg { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
+  .col-reg h3 { color: #f59e0b; }
+  .col-reg .int-box { background: rgba(245,158,11,0.1); color: #fcd34d; }
+  .col-data { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); }
+  .col-data h3 { color: #22c55e; }
+  .col-data .int-box { background: rgba(34,197,94,0.1); color: #86efac; }
+  .int-arrow { display: flex; align-items: center; font-size: 22px; color: #57534E; padding: 0 4px; }
+
+  /* responsive */
+  @media (max-width: 900px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .widget-grid { grid-template-columns: 1fr; }
+    .project-grid { grid-template-columns: 1fr; }
+    .kanban { grid-template-columns: repeat(2, 1fr); }
+    .pinned-grid { grid-template-columns: 1fr 1fr; }
+    .model-grid { grid-template-columns: 1fr 1fr; }
+    .int-flow { flex-direction: column; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>Mission Control Designs</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="showSection('arch')">Architecture</div>
+    <div class="tab" onclick="showSection('dashboard')">Dashboard</div>
+    <div class="tab" onclick="showSection('projects')">Projects</div>
+    <div class="tab" onclick="showSection('ideas')">Ideas Board</div>
+    <div class="tab" onclick="showSection('kb')">Knowledge Base</div>
+    <div class="tab" onclick="showSection('datamodel')">Data Model</div>
+    <div class="tab" onclick="showSection('integrations')">Integrations</div>
+  </div>
+</nav>
+
+<!-- ==================== 1. ARCHITECTURE ==================== -->
+<div class="section active" id="arch">
+  <h2 class="section-title">App Architecture</h2>
+  <p class="section-desc">Three-layer architecture: Frontend, API, Data + Integrations</p>
+  <div class="arch-grid">
+    <div class="arch-layer layer-ui">
+      <h3>Frontend — Next.js App Router</h3>
+      <div class="boxes">
+        <div class="box">Dashboard</div>
+        <div class="box">Projects</div>
+        <div class="box">Ideas</div>
+        <div class="box">Knowledge Base</div>
+        <div class="box">Activity</div>
+        <div class="box">Settings</div>
+      </div>
+      <div class="boxes" style="margin-top:10px;">
+        <div class="box" style="opacity:0.7;">Design System (UI Kit)</div>
+        <div class="box" style="opacity:0.7;">Hooks + State (Zustand)</div>
+        <div class="box" style="opacity:0.7;">TanStack Query</div>
+      </div>
+    </div>
+    <div class="arch-arrow">&#8595;</div>
+    <div class="arch-layer layer-api">
+      <h3>API Layer — Next.js Route Handlers</h3>
+      <div class="boxes">
+        <div class="box">/api/projects</div>
+        <div class="box">/api/ideas</div>
+        <div class="box">/api/kb</div>
+        <div class="box">/api/activity</div>
+        <div class="box">/api/integrations</div>
+      </div>
+    </div>
+    <div class="arch-arrow">&#8595;</div>
+    <div class="layer-data">
+      <div class="arch-layer layer-db">
+        <h3>Data Layer</h3>
+        <div class="boxes">
+          <div class="box">Drizzle ORM</div>
+          <div class="box">SQLite DB</div>
+        </div>
+      </div>
+      <div class="arch-layer layer-int">
+        <h3>Integration Layer</h3>
+        <div class="boxes">
+          <div class="box">Adapter Registry</div>
+        </div>
+        <div class="boxes" style="margin-top:10px;">
+          <div class="box">Asana</div>
+          <div class="box">Gmail</div>
+          <div class="box">Calendar</div>
+          <div class="box">GitHub</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 2. DASHBOARD ==================== -->
+<div class="section" id="dashboard">
+  <h2 class="section-title">Dashboard</h2>
+  <p class="section-desc">Your personal command center — everything at a glance</p>
+  <div class="app-frame">
+    <div class="sidebar">
+      <div class="logo">Mission Control</div>
+      <div class="nav-item active">Dashboard</div>
+      <div class="nav-item">Projects</div>
+      <div class="nav-item">Ideas</div>
+      <div class="nav-item">Knowledge Base</div>
+      <div class="nav-item">Activity</div>
+      <div class="nav-item" style="margin-top:auto;">Settings</div>
+    </div>
+    <div class="main-content">
+      <div class="greeting">Good evening, Jackie</div>
+      <div class="date-text">Tuesday, Feb 24, 2026</div>
+      <div class="quick-capture">Quick capture... idea, task, or note</div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="number blue">5</div><div class="label">Active Projects</div></div>
+        <div class="stat-card"><div class="number amber">12</div><div class="label">Pending Tasks</div></div>
+        <div class="stat-card"><div class="number purple">8</div><div class="label">Ideas Brewing</div></div>
+        <div class="stat-card"><div class="number green">23</div><div class="label">KB Articles</div></div>
+      </div>
+
+      <div class="widget-grid">
+        <div class="widget">
+          <h3>Today's Focus</h3>
+          <div class="widget-item"><span class="checkbox"></span><span class="item-title">Finalize API design doc</span><div class="item-meta" style="margin-left:26px;">Mission Control &middot; Due today</div></div>
+          <div class="widget-item"><span class="checkbox"></span><span class="item-title">Review PR #42 feedback</span><div class="item-meta synced" style="margin-left:26px;">Asana &middot; Due today</div></div>
+          <div class="widget-item"><span class="checkbox"></span><span class="item-title">Write integration tests</span><div class="item-meta overdue" style="margin-left:26px;">Asana &middot; Overdue</div></div>
+        </div>
+        <div class="widget">
+          <h3>Upcoming</h3>
+          <div class="widget-item"><div class="item-title">Team standup</div><div class="item-meta">10:00 AM - 10:30 AM</div></div>
+          <div class="widget-item"><div class="item-title">Design review</div><div class="item-meta">2:00 PM - 3:00 PM</div></div>
+          <div class="widget-item"><div class="item-title">1:1 with Alex</div><div class="item-meta">4:00 PM - 4:30 PM</div></div>
+        </div>
+        <div class="widget">
+          <h3>Recent Activity</h3>
+          <div class="widget-item"><div class="item-title" style="color:#22c55e;">Completed "Setup CI pipeline"</div><div class="item-meta">2 hours ago &middot; Projects</div></div>
+          <div class="widget-item"><div class="item-title" style="color:#8b5cf6;">New idea: "AI-powered search"</div><div class="item-meta">5 hours ago &middot; Ideas</div></div>
+          <div class="widget-item"><div class="item-title" style="color:#f59e0b;">Synced 8 tasks from Asana</div><div class="item-meta">Today &middot; Integration</div></div>
+        </div>
+        <div class="widget">
+          <h3>Email Highlights</h3>
+          <div class="widget-item"><div class="item-title">3 unread important emails</div></div>
+          <div class="widget-item"><div class="item-meta">Alex: "Re: Q1 roadmap draft"</div></div>
+          <div class="widget-item"><div class="item-meta">Sarah: "Design assets ready"</div></div>
+          <div class="widget-item"><div class="item-meta">GitHub: PR review requested</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 3. PROJECTS ==================== -->
+<div class="section" id="projects">
+  <h2 class="section-title">Projects</h2>
+  <p class="section-desc">Track all your active work with status, priority, and progress</p>
+  <div class="app-frame">
+    <div class="sidebar">
+      <div class="logo">Mission Control</div>
+      <div class="nav-item">Dashboard</div>
+      <div class="nav-item active">Projects</div>
+      <div class="nav-item">Ideas</div>
+      <div class="nav-item">Knowledge Base</div>
+      <div class="nav-item">Activity</div>
+    </div>
+    <div class="main-content">
+      <div class="page-header">
+        <div class="page-title">Projects</div>
+        <button class="btn-primary">+ New Project</button>
+      </div>
+      <div class="filter-bar">
+        <span class="filter-tab active">All</span>
+        <span class="filter-tab">Active</span>
+        <span class="filter-tab">Paused</span>
+        <span class="filter-tab">Completed</span>
+        <input class="search-input" placeholder="Search...">
+      </div>
+      <div class="project-grid">
+        <div class="project-card">
+          <div class="accent" style="background:#5B7FD6;"></div>
+          <h4>Mission Control App</h4>
+          <div class="badges"><span class="badge badge-active">Active</span><span class="badge badge-high">High</span></div>
+          <div class="desc">Personal command center for tracking work</div>
+          <div class="meta">8/15 tasks &middot; Target: Mar 15 <div class="progress-bar"><div class="progress-fill" style="width:53%;background:#5B7FD6;"></div></div></div>
+        </div>
+        <div class="project-card">
+          <div class="accent" style="background:#8b5cf6;"></div>
+          <h4>AI Blog Series</h4>
+          <div class="badges"><span class="badge badge-active">Active</span><span class="badge badge-med">Medium</span></div>
+          <div class="desc">Weekly blog posts on AI developments</div>
+          <div class="meta">3/6 tasks &middot; Target: Apr 1 <div class="progress-bar"><div class="progress-fill" style="width:50%;background:#8b5cf6;"></div></div></div>
+        </div>
+        <div class="project-card">
+          <div class="accent" style="background:#22c55e;"></div>
+          <h4>Home Automation</h4>
+          <div class="badges"><span class="badge badge-paused">Paused</span><span class="badge badge-low">Low</span></div>
+          <div class="desc">Smart home setup and integrations</div>
+          <div class="meta">2/10 tasks &middot; No target</div>
+        </div>
+        <div class="project-card">
+          <div class="accent" style="background:#f59e0b;"></div>
+          <h4>Portfolio Redesign</h4>
+          <div class="badges"><span class="badge badge-active">Active</span><span class="badge badge-high">High</span></div>
+          <div class="desc">New portfolio site with project showcase</div>
+          <div class="meta">11/14 tasks &middot; Target: Feb 28 <div class="progress-bar"><div class="progress-fill" style="width:79%;background:#22c55e;"></div></div></div>
+        </div>
+      </div>
+      <div class="linked-section">
+        <h3>Linked from Asana <span class="synced-badge">synced</span></h3>
+        <div class="linked-card">
+          <div><div class="lc-title">Q1 Sprint (Asana)</div><div class="lc-meta">14 tasks &middot; 7 completed</div></div>
+          <div class="lc-sync">Synced 2m ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 4. IDEAS BOARD ==================== -->
+<div class="section" id="ideas">
+  <h2 class="section-title">Ideas Board</h2>
+  <p class="section-desc">Kanban-style idea tracking — from spark to project</p>
+  <div class="app-frame">
+    <div class="sidebar">
+      <div class="logo">Mission Control</div>
+      <div class="nav-item">Dashboard</div>
+      <div class="nav-item">Projects</div>
+      <div class="nav-item active">Ideas</div>
+      <div class="nav-item">Knowledge Base</div>
+      <div class="nav-item">Activity</div>
+    </div>
+    <div class="main-content">
+      <div class="page-header">
+        <div class="page-title">Ideas</div>
+        <button class="btn-primary">+ New Idea</button>
+      </div>
+      <div class="kanban">
+        <div class="kanban-col">
+          <h3 style="color:#f59e0b;">Spark <span class="count" style="background:#FEF3C7;color:#92400E;">3</span></h3>
+          <div class="idea-card"><h5>AI-powered search</h5><p>Natural language search across all content</p><span class="idea-tag tag-ai">AI</span></div>
+          <div class="idea-card"><h5>Weekly digest email</h5><p>Auto-generated summary of the week's progress</p></div>
+          <div class="idea-card"><h5>Voice capture mode</h5><p>Speak ideas instead of typing</p></div>
+        </div>
+        <div class="kanban-col">
+          <h3 style="color:#5B7FD6;">Exploring <span class="count" style="background:#EEF2FF;color:#3730A3;">2</span></h3>
+          <div class="idea-card"><h5>Mobile companion</h5><p>React Native app for quick capture on the go</p><span class="idea-tag tag-mobile">Mobile</span></div>
+          <div class="idea-card"><h5>Notion import</h5><p>Migrate existing notes from Notion to KB</p></div>
+        </div>
+        <div class="kanban-col">
+          <h3 style="color:#8b5cf6;">Validating <span class="count" style="background:#F3E8FF;color:#6B21A8;">2</span></h3>
+          <div class="idea-card"><h5>GitHub integration</h5><p>Sync repos, PRs, and issues into projects</p><span class="idea-tag tag-dev">Dev</span></div>
+          <div class="idea-card"><h5>Dark mode themes</h5><p>Custom color themes beyond light/dark</p></div>
+        </div>
+        <div class="kanban-col">
+          <h3 style="color:#22c55e;">Ready <span class="count" style="background:#D1FAE5;color:#065F46;">1</span></h3>
+          <div class="idea-card">
+            <h5>Calendar view</h5><p>Timeline view for all projects and tasks</p>
+            <button class="btn-promote">Promote to Project</button>
+          </div>
+        </div>
+      </div>
+      <div class="drag-hint">Drag cards between columns to change stage</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 5. KNOWLEDGE BASE ==================== -->
+<div class="section" id="kb">
+  <h2 class="section-title">Knowledge Base</h2>
+  <p class="section-desc">Your personal wiki — notes, references, and learnings</p>
+  <div class="app-frame">
+    <div class="sidebar">
+      <div class="logo">Mission Control</div>
+      <div class="nav-item">Dashboard</div>
+      <div class="nav-item">Projects</div>
+      <div class="nav-item">Ideas</div>
+      <div class="nav-item active">Knowledge Base</div>
+      <div class="nav-item">Activity</div>
+    </div>
+    <div class="main-content">
+      <div class="page-header">
+        <div class="page-title">Knowledge Base</div>
+        <button class="btn-primary">+ New Article</button>
+      </div>
+      <input class="kb-search" placeholder="Search articles...">
+      <div class="tag-bar">
+        <span class="tag-chip active">All</span>
+        <span class="tag-chip dev">Dev Tools</span>
+        <span class="tag-chip ai">AI</span>
+        <span class="tag-chip design">Design</span>
+        <span class="tag-chip process">Process</span>
+      </div>
+      <div class="pinned-section">
+        <h3>Pinned</h3>
+        <div class="pinned-grid">
+          <div class="pinned-card"><h5>Git Workflow Guide</h5><p>Branch naming, commit conventions, PR templates</p><div class="card-footer"><span class="idea-tag dev">Dev Tools</span><span class="card-date">Jan 15</span></div></div>
+          <div class="pinned-card"><h5>Design System Tokens</h5><p>Color palette, typography, spacing scale reference</p><div class="card-footer"><span class="idea-tag design">Design</span><span class="card-date">Feb 2</span></div></div>
+          <div class="pinned-card"><h5>API Key Management</h5><p>How to store and rotate API keys securely</p><div class="card-footer"><span class="idea-tag dev">Dev Tools</span><span class="card-date">Jan 28</span></div></div>
+        </div>
+      </div>
+      <div class="articles-list">
+        <div class="articles-header">All Articles <span>23 articles</span></div>
+        <div class="article-row"><div><div class="ar-title">Prompt Engineering Patterns</div><div class="ar-desc">Chain-of-thought, few-shot, and system prompt techniques</div></div><div class="ar-right"><span class="idea-tag ai" style="background:#F3E8FF;color:#6B21A8;">AI</span><span class="ar-date">Feb 20</span></div></div>
+        <div class="article-row"><div><div class="ar-title">Setting Up TailwindCSS v4</div><div class="ar-desc">Migration guide from v3, new CSS-first config approach</div></div><div class="ar-right"><span class="idea-tag dev" style="background:#EEF2FF;color:#3730A3;">Dev Tools</span><span class="ar-date">Feb 18</span></div></div>
+        <div class="article-row"><div><div class="ar-title">Sprint Retrospective Template</div><div class="ar-desc">Format for running effective retros with action items</div></div><div class="ar-right"><span class="idea-tag process" style="background:#D1FAE5;color:#065F46;">Process</span><span class="ar-date">Feb 10</span></div></div>
+        <div class="article-row"><div><div class="ar-title">Drizzle ORM Cheat Sheet</div><div class="ar-desc">Quick reference for queries, relations, and migrations</div></div><div class="ar-right"><span class="idea-tag dev" style="background:#EEF2FF;color:#3730A3;">Dev Tools</span><span class="ar-date">Feb 5</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 6. DATA MODEL ==================== -->
+<div class="section" id="datamodel">
+  <h2 class="section-title">Data Model</h2>
+  <p class="section-desc">Core entities and their relationships (SQLite + Drizzle ORM)</p>
+  <div class="model-grid">
+    <div class="entity-card e-projects">
+      <h4>Projects</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-name">title</span> <span class="field-type">text</span><br>
+        <span class="field-name">description</span> <span class="field-type">text</span><br>
+        <span class="field-name">status</span> <span class="field-type">active | paused | done</span><br>
+        <span class="field-name">priority</span> <span class="field-type">low | med | high</span><br>
+        <span class="field-name">color</span> <span class="field-type">hex</span><br>
+        <span class="field-name">startDate / targetDate</span><br>
+        <span class="field-name">externalId / source</span>
+      </div>
+    </div>
+    <div class="entity-card e-tasks">
+      <h4>Tasks</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-fk">projectId</span> <span class="field-type">FK &rarr; Projects</span><br>
+        <span class="field-name">title</span> <span class="field-type">text</span><br>
+        <span class="field-name">status</span> <span class="field-type">todo | in_progress | done</span><br>
+        <span class="field-name">priority</span> <span class="field-type">low | med | high</span><br>
+        <span class="field-name">dueDate</span> <span class="field-type">timestamp</span><br>
+        <span class="field-name">sortOrder</span> <span class="field-type">integer</span><br>
+        <span class="field-name">externalId / source</span>
+      </div>
+    </div>
+    <div class="entity-card e-ideas">
+      <h4>Ideas</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-name">title</span> <span class="field-type">text</span><br>
+        <span class="field-name">body</span> <span class="field-type">markdown</span><br>
+        <span class="field-name">stage</span> <span class="field-type">spark | exploring | validating | ready</span><br>
+        <span class="field-name">category</span> <span class="field-type">text</span><br>
+        <span class="field-fk">projectId</span> <span class="field-type">FK &rarr; Projects (on promote)</span>
+      </div>
+    </div>
+    <div class="entity-card e-kb">
+      <h4>KB Articles</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-name">title</span> <span class="field-type">text</span><br>
+        <span class="field-name">slug</span> <span class="field-type">text unique</span><br>
+        <span class="field-name">content</span> <span class="field-type">markdown</span><br>
+        <span class="field-name">summary</span> <span class="field-type">text</span><br>
+        <span class="field-name">pinned</span> <span class="field-type">boolean</span>
+      </div>
+    </div>
+    <div class="entity-card e-tags">
+      <h4>Tags + Assignments</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-name">name</span> <span class="field-type">text unique</span><br>
+        <span class="field-name">color</span> <span class="field-type">hex</span><br>
+        <br>
+        <em style="color:#78716C;">Polymorphic join:</em><br>
+        <span class="field-fk">tagId</span> <span class="field-type">FK &rarr; Tags</span><br>
+        <span class="field-name">entityId</span> + <span class="field-name">entityType</span>
+      </div>
+    </div>
+    <div class="entity-card e-activity">
+      <h4>Activities</h4>
+      <div class="fields">
+        <span class="field-pk">id</span> <span class="field-type">text PK</span><br>
+        <span class="field-name">entityId / entityType</span><br>
+        <span class="field-name">action</span> <span class="field-type">created | updated | completed | synced</span><br>
+        <span class="field-name">title</span> <span class="field-type">text</span><br>
+        <span class="field-name">metadata</span> <span class="field-type">JSON</span><br>
+        <span class="field-name">source</span> <span class="field-type">local | asana | gmail | ...</span>
+      </div>
+    </div>
+    <div class="entity-card e-integration" style="grid-column: span 2;">
+      <h4>Integration Config + Cache</h4>
+      <div class="fields" style="display:flex;gap:40px;">
+        <div>
+          <em style="color:#78716C;">Config:</em><br>
+          <span class="field-name">provider</span> <span class="field-type">unique</span><br>
+          <span class="field-name">enabled</span> <span class="field-type">boolean</span><br>
+          <span class="field-name">config</span> <span class="field-type">JSON</span><br>
+          <span class="field-name">lastSyncAt</span> <span class="field-type">timestamp</span>
+        </div>
+        <div>
+          <em style="color:#78716C;">Cache:</em><br>
+          <span class="field-name">provider</span> <span class="field-type">text</span><br>
+          <span class="field-name">dataType</span> <span class="field-type">tasks | emails | ...</span><br>
+          <span class="field-name">data</span> <span class="field-type">JSON</span><br>
+          <span class="field-name">fetchedAt / expiresAt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="relationships">
+    <h3>Relationships</h3>
+    <div class="rel-list">
+      <div class="rel-item"><strong style="color:#93b4f5;">Projects</strong> <span class="rel-arrow">&rarr; 1:many &rarr;</span> <strong style="color:#86efac;">Tasks</strong></div>
+      <div class="rel-item"><strong style="color:#c4b5fd;">Ideas</strong> <span class="rel-arrow">&rarr; promoted &rarr;</span> <strong style="color:#93b4f5;">Projects</strong> <span style="color:#78716C;">(optional FK)</span></div>
+      <div class="rel-item"><strong style="color:#fcd34d;">Tags</strong> <span class="rel-arrow">&rarr; many:many &rarr;</span> <strong>Projects, Ideas, KB Articles</strong> <span style="color:#78716C;">(via tag_assignments)</span></div>
+      <div class="rel-item"><strong style="color:#fca5a5;">Activities</strong> <span class="rel-arrow">&rarr; polymorphic &rarr;</span> <strong>any entity</strong> <span style="color:#78716C;">(entityType + entityId)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 7. INTEGRATION ARCHITECTURE ==================== -->
+<div class="section" id="integrations">
+  <h2 class="section-title">Integration Architecture</h2>
+  <p class="section-desc">Adapter pattern — add new integrations with just 4 files</p>
+  <div class="int-flow">
+    <div class="int-col col-ext">
+      <h3>External APIs</h3>
+      <div class="int-box">Asana API</div>
+      <div class="int-box">Gmail API</div>
+      <div class="int-box">Google Calendar</div>
+      <div class="int-box">GitHub API</div>
+      <div class="int-box" style="border:1px dashed rgba(239,68,68,0.4);background:transparent;">Future APIs...</div>
+    </div>
+    <div class="int-arrow">&rarr;</div>
+    <div class="int-col col-adapt">
+      <h3>Adapter Layer</h3>
+      <div class="int-box">AsanaAdapter</div>
+      <div class="int-box">GmailAdapter</div>
+      <div class="int-box">CalendarAdapter</div>
+      <div class="int-box">GitHubAdapter</div>
+      <div class="iface">
+        <h5>IntegrationAdapter (interface)</h5>
+        <p>testConnection()<br>sync(config)<br>getCachedData(dataType)</p>
+      </div>
+    </div>
+    <div class="int-arrow">&rarr;</div>
+    <div class="int-col col-reg">
+      <h3>Registry + Config</h3>
+      <div class="int-box">IntegrationRegistry</div>
+      <div class="int-box" style="opacity:0.8;">register() / get()</div>
+      <div class="int-box" style="opacity:0.8;">syncAll()</div>
+      <div class="int-box" style="margin-top:16px;">Settings UI</div>
+      <div style="font-size:13px;color:#A8A29E;margin-top:12px;line-height:1.5;">
+        Enable/disable<br>Configure sync<br>Test connection<br>Manual sync trigger
+      </div>
+    </div>
+    <div class="int-arrow">&rarr;</div>
+    <div class="int-col col-data">
+      <h3>Data Flow</h3>
+      <div class="int-box">Cache Layer (SQLite)</div>
+      <div class="int-box">Activity Log</div>
+      <div class="int-box">Local Entities</div>
+      <div style="font-size:13px;color:#A8A29E;margin-top:16px;line-height:1.5;">
+        <strong style="color:#86efac;">Sync strategy:</strong><br>
+        &bull; On-demand (5min TTL)<br>
+        &bull; Background refetch<br>
+        &bull; Manual "Sync Now"<br>
+        &bull; No webhooks needed
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+
+</body>
+</html>
