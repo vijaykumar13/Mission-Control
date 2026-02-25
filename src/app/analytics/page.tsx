@@ -24,7 +24,8 @@ import { useProjects } from "@/lib/hooks/use-projects";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useIdeas } from "@/lib/hooks/use-ideas";
 import { useKBArticles } from "@/lib/hooks/use-kb";
-import { Flame, TrendingUp, Activity, Heart } from "lucide-react";
+import { useTimeSessions } from "@/lib/hooks/use-time-sessions";
+import { Flame, TrendingUp, Activity, Heart, Clock } from "lucide-react";
 import { WeeklyDigestWidget } from "@/components/ai/weekly-digest";
 
 // ── Helpers ──────────────────────────────────────────────
@@ -175,9 +176,10 @@ export default function AnalyticsPage() {
   const { data: tasks, isLoading: tasksLoading } = useTasks();
   const { data: ideas, isLoading: ideasLoading } = useIdeas();
   const { data: articles, isLoading: articlesLoading } = useKBArticles();
+  const { data: timeSessions, isLoading: timeLoading } = useTimeSessions();
 
   const isLoading =
-    projectsLoading || tasksLoading || ideasLoading || articlesLoading;
+    projectsLoading || tasksLoading || ideasLoading || articlesLoading || timeLoading;
 
   // ── Computed data ────────────────────────────────────
 
@@ -365,6 +367,64 @@ export default function AnalyticsPage() {
 
   const weeklyDelta = weeklyStats.thisWeek - weeklyStats.lastWeek;
 
+  // ── Time tracking data ────────────────────────────
+
+  const totalHoursTracked = useMemo(() => {
+    if (!timeSessions) return 0;
+    const totalMin = timeSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    return Math.round(totalMin / 60 * 10) / 10;
+  }, [timeSessions]);
+
+  const timeByProject = useMemo(() => {
+    if (!timeSessions || !projects) return [];
+    const map = new Map<string, number>();
+    for (const s of timeSessions) {
+      if (s.projectId && s.duration) {
+        map.set(s.projectId, (map.get(s.projectId) || 0) + s.duration);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([projectId, minutes]) => {
+        const project = projects.find((p) => p.id === projectId);
+        return {
+          name: project
+            ? project.title.length > 25
+              ? project.title.substring(0, 25) + "..."
+              : project.title
+            : "Unknown",
+          hours: Math.round(minutes / 60 * 10) / 10,
+          minutes,
+          color: project?.color || "#5B7FD6",
+        };
+      })
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [timeSessions, projects]);
+
+  const timeByDay = useMemo(() => {
+    if (!timeSessions) return [];
+    const map = new Map<string, number>();
+    for (const s of timeSessions) {
+      if (!s.duration) continue;
+      const day = new Date(s.startedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      map.set(day, (map.get(day) || 0) + s.duration);
+    }
+    return Array.from(map.entries())
+      .map(([day, minutes]) => ({
+        day,
+        hours: Math.round(minutes / 60 * 10) / 10,
+      }))
+      .sort((a, b) => {
+        const da = new Date(a.day + " 2026");
+        const db = new Date(b.day + " 2026");
+        return da.getTime() - db.getTime();
+      });
+  }, [timeSessions]);
+
+  const totalSessions = timeSessions?.length ?? 0;
+
   // ── Loading state ───────────────────────────────────
 
   if (isLoading) {
@@ -431,11 +491,133 @@ export default function AnalyticsPage() {
           icon={Activity}
         />
         <StatCard
-          label="Ideas Pipeline"
-          value={String(totalIdeas)}
-          subtitle={`${ideas?.filter((i) => i.stage === "ready").length ?? 0} ready to build`}
+          label="Hours Tracked"
+          value={`${totalHoursTracked}h`}
+          subtitle={`${totalSessions} Claude Code sessions`}
           color="#8b5cf6"
+          icon={Clock}
         />
+      </div>
+
+      {/* ── Time Tracking Section ──────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* ── Hours by Project (Bar) ─────────────────── */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-[var(--text-secondary)]" />
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">
+              Time by Project
+            </h3>
+            <span className="ml-auto text-sm text-[var(--text-tertiary)]">
+              {totalHoursTracked}h total across {totalSessions} sessions
+            </span>
+          </div>
+          {timeByProject.length > 0 ? (
+            <div
+              className="w-full"
+              style={{ height: Math.max(200, timeByProject.length * 50 + 40) }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={timeByProject}
+                  layout="vertical"
+                  margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--border-default)"
+                    horizontal={false}
+                  />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v: number) => `${v}h`}
+                    tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
+                    axisLine={{ stroke: "var(--border-default)" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={160}
+                    tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const item = payload[0].payload as (typeof timeByProject)[0];
+                      return (
+                        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] px-3 py-2 shadow-[var(--shadow-md)]">
+                          <p className="text-xs font-medium text-[var(--text-primary)]">{label}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">
+                            {item.hours} hours ({item.minutes} min)
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="hours" radius={[0, 4, 4, 0]} barSize={24}>
+                    {timeByProject.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-[var(--text-tertiary)]">No time sessions tracked yet</p>
+            </div>
+          )}
+        </Card>
+
+        {/* ── Hours by Day (Line) ────────────────────── */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-5 h-5 text-[var(--text-secondary)]" />
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">
+              Daily Hours (Claude Code)
+            </h3>
+          </div>
+          {timeByDay.length > 0 ? (
+            <div className="w-full h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={timeByDay} margin={{ top: 5, right: 20, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                    axisLine={{ stroke: "var(--border-default)" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => `${v}h`}
+                    tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] px-3 py-2 shadow-[var(--shadow-md)]">
+                          <p className="text-xs font-medium text-[var(--text-primary)]">{label}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">{payload[0].value} hours</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="hours" fill="#5B7FD6" radius={[4, 4, 0, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-[var(--text-tertiary)]">Time data will appear as you work</p>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* ── Charts Grid ───────────────────────────────── */}
