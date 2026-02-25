@@ -8,6 +8,9 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette } from "@/components/command-palette/command-palette";
 import { QuickCapture } from "@/components/quick-capture/quick-capture";
 import { ToastContainer } from "@/components/ui/toast-container";
+import { ChatPanel } from "@/components/ai/chat-panel";
+import { ThemeProvider } from "@/components/theme-provider";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -44,6 +47,9 @@ export default function RootLayout({
           <CommandPalette />
           <QuickCapture />
           <ToastContainer />
+          <ChatPanel />
+          <ThemeProvider />
+          <KeyboardShortcuts />
         </Providers>
       </body>
     </html>

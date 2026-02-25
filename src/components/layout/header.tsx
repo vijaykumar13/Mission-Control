@@ -1,27 +1,14 @@
 "use client";
 
 import { Search, Plus, Moon, Sun } from "lucide-react";
-import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/stores/app-store";
 import { TimerWidget } from "@/components/time-tracking/timer-widget";
 
 export function Header() {
-  const { setCommandPaletteOpen, setQuickCaptureOpen } = useAppStore();
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
+  const { setCommandPaletteOpen, setQuickCaptureOpen, ui, setTheme } = useAppStore();
 
   const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    setTheme(ui.theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -56,8 +43,9 @@ export function Header() {
         <button
           onClick={toggleTheme}
           className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] cursor-pointer"
+          title="Toggle dark mode (Shift+D)"
         >
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {ui.theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
       </div>
     </header>

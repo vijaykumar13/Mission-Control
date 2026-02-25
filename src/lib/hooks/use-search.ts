@@ -67,3 +67,58 @@ export function useEmbed() {
       }),
   });
 }
+
+/** Tag suggestion result */
+export interface TagSuggestion {
+  tagId: string;
+  name: string;
+  color: string;
+  confidence: number;
+  reason: string;
+}
+
+/** Suggest tags for content */
+export function useSuggestTags(content: string, options?: { entityId?: string; entityType?: string; enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["suggest-tags", content.slice(0, 100), options?.entityId],
+    queryFn: () =>
+      apiFetch<TagSuggestion[]>("/api/ai/suggest-tags", {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          entityId: options?.entityId,
+          entityType: options?.entityType,
+          limit: 5,
+        }),
+      }),
+    enabled: (options?.enabled ?? true) && content.trim().length >= 5,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+/** Smart capture result */
+export interface SmartCaptureResult {
+  id: string;
+  type: string;
+  title: string;
+  href: string;
+  parsed: {
+    type: string;
+    title: string;
+    priority?: string;
+    stage?: string;
+    dueDate?: string;
+  };
+}
+
+/** Smart capture mutation */
+export function useSmartCapture() {
+  return useMutation({
+    mutationFn: (data: { input: string; projectId?: string }) =>
+      apiFetch<SmartCaptureResult>("/api/ai/smart-capture", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  });
+}

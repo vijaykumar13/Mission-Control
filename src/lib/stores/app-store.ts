@@ -70,6 +70,7 @@ interface UIState {
   sidebarCollapsed: boolean;
   commandPaletteOpen: boolean;
   quickCaptureOpen: boolean;
+  theme: "light" | "dark" | "system";
 }
 
 // ── App Store ──────────────────────────────────────────
@@ -80,6 +81,7 @@ interface AppState {
   toggleSidebar: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setQuickCaptureOpen: (open: boolean) => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
 
   // Timer
   timer: TimerState;
@@ -100,6 +102,7 @@ export const useAppStore = create<AppState>()(
         sidebarCollapsed: false,
         commandPaletteOpen: false,
         quickCaptureOpen: false,
+        theme: "light",
       },
       toggleSidebar: () =>
         set((state) => ({
@@ -109,6 +112,8 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ ui: { ...state.ui, commandPaletteOpen: open } })),
       setQuickCaptureOpen: (open) =>
         set((state) => ({ ui: { ...state.ui, quickCaptureOpen: open } })),
+      setTheme: (theme) =>
+        set((state) => ({ ui: { ...state.ui, theme } })),
 
       // ── Timer ──
       timer: {
@@ -159,7 +164,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "mission-control-store",
       partialize: (state) => ({
-        ui: { sidebarCollapsed: state.ui.sidebarCollapsed },
+        ui: { sidebarCollapsed: state.ui.sidebarCollapsed, theme: state.ui.theme },
         displayName: state.displayName,
         timer: state.timer,
       }),

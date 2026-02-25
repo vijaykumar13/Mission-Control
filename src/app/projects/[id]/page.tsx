@@ -22,6 +22,7 @@ import { use, useState } from "react";
 import { useProject } from "@/lib/hooks/use-projects";
 import { useTasks, useCreateTask, useUpdateTask } from "@/lib/hooks/use-tasks";
 import { FindSimilar } from "@/components/ai/find-similar";
+import { SuggestTags } from "@/components/ai/suggest-tags";
 
 export default function ProjectDetailPage({
   params,
@@ -314,6 +315,17 @@ export default function ProjectDetailPage({
               Start the timer to track time
             </p>
           </Card>
+
+          {/* AI Tag Suggestions */}
+          {project.title && (
+            <Card>
+              <SuggestTags
+                content={[project.title, project.description].filter(Boolean).join(" ")}
+                entityId={id}
+                entityType="project"
+              />
+            </Card>
+          )}
 
           {/* Find Similar */}
           <FindSimilar entityId={id} entityType="project" />

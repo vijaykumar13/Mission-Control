@@ -217,7 +217,7 @@ function IntegrationConfigCard({
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
   const { data: integrations, isLoading: integrationsLoading } = useIntegrations();
-  const { displayName, setDisplayName } = useAppStore();
+  const { displayName, setDisplayName, ui: { theme }, setTheme } = useAppStore();
   const [nameInput, setNameInput] = useState(displayName);
 
   return (
@@ -293,25 +293,53 @@ export default function SettingsPage() {
               <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">
                 Appearance
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
                     Theme
                   </label>
                   <div className="flex gap-3">
-                    {["Light", "Dark", "System"].map((theme) => (
+                    {(["light", "dark", "system"] as const).map((t) => (
                       <button
-                        key={theme}
-                        onClick={() => {
-                          const isDark = theme === "Dark" || (theme === "System" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-                          document.documentElement.classList.toggle("dark", isDark);
-                          localStorage.setItem("theme", theme.toLowerCase());
-                        }}
-                        className="px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className={`px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] border cursor-pointer transition-colors ${
+                          theme === t
+                            ? "border-[var(--accent-500)] bg-[var(--accent-50)] text-[var(--accent-600)]"
+                            : "border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                        }`}
                       >
-                        {theme}
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
+                    Keyboard Shortcuts
+                  </label>
+                  <div className="space-y-2 text-xs text-[var(--text-secondary)]">
+                    <div className="flex items-center justify-between py-1">
+                      <span>Search / Command Palette</span>
+                      <kbd className="px-1.5 py-0.5 bg-[var(--gray-100)] border border-[var(--border-default)] rounded text-[10px] font-mono">Cmd+K</kbd>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span>Toggle Sidebar</span>
+                      <kbd className="px-1.5 py-0.5 bg-[var(--gray-100)] border border-[var(--border-default)] rounded text-[10px] font-mono">Cmd+/</kbd>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span>Toggle Dark Mode</span>
+                      <kbd className="px-1.5 py-0.5 bg-[var(--gray-100)] border border-[var(--border-default)] rounded text-[10px] font-mono">Shift+D</kbd>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span>Go to Page</span>
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-[var(--gray-100)] border border-[var(--border-default)] rounded text-[10px] font-mono">G</kbd>
+                        <span className="text-[var(--text-tertiary)]">then</span>
+                        <kbd className="px-1.5 py-0.5 bg-[var(--gray-100)] border border-[var(--border-default)] rounded text-[10px] font-mono">D/P/I/B/A/N/S</kbd>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

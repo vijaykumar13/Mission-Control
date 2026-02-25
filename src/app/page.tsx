@@ -12,11 +12,10 @@ import {
   Calendar,
   Mail,
   Activity,
-  Sparkles,
-  Clock,
   ExternalLink,
   Settings,
 } from "lucide-react";
+import { SmartCapture } from "@/components/ai/smart-capture";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useIdeas } from "@/lib/hooks/use-ideas";
 import { useKBArticles } from "@/lib/hooks/use-kb";
@@ -184,15 +183,8 @@ export default function DashboardPage() {
 
   return (
     <PageShell title={`${greeting}, ${displayName}`} description={dateStr}>
-      {/* Quick Capture */}
-      <div className="relative max-w-xl">
-        <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
-        <input
-          type="text"
-          placeholder="Quick capture... idea, task, or note"
-          className="w-full h-11 pl-10 pr-4 text-sm rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)]"
-        />
-      </div>
+      {/* Smart Capture */}
+      <SmartCapture />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

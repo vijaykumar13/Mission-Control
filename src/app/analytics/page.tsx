@@ -25,6 +25,7 @@ import { useTasks } from "@/lib/hooks/use-tasks";
 import { useIdeas } from "@/lib/hooks/use-ideas";
 import { useKBArticles } from "@/lib/hooks/use-kb";
 import { Flame, TrendingUp, Activity, Heart } from "lucide-react";
+import { WeeklyDigestWidget } from "@/components/ai/weekly-digest";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -727,6 +728,9 @@ export default function AnalyticsPage() {
           )}
         </Card>
       </div>
+
+      {/* ── AI Weekly Digest ─────────────────────────────── */}
+      <WeeklyDigestWidget />
 
       {/* ── Weekly Productivity ────────────────────────── */}
       <Card>
