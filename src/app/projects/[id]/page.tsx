@@ -10,19 +10,27 @@ import {
   ArrowLeft,
   ListTodo,
   Clock,
-  MoreHorizontal,
   Plus,
   CheckCircle2,
   Circle,
   Timer,
   Loader2,
+  Pencil,
+  X,
+  Save,
+  Trash2,
 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { use, useState } from "react";
-import { useProject } from "@/lib/hooks/use-projects";
-import { useTasks, useCreateTask, useUpdateTask } from "@/lib/hooks/use-tasks";
+import { useProject, useUpdateProject, useDeleteProject } from "@/lib/hooks/use-projects";
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/lib/hooks/use-tasks";
 import { FindSimilar } from "@/components/ai/find-similar";
 import { SuggestTags } from "@/components/ai/suggest-tags";
+import { toast } from "@/lib/stores/toast-store";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PROJECT_STATUSES, PRIORITIES } from "@/lib/utils/constants";
+import { useRouter } from "next/navigation";
 
 export default function ProjectDetailPage({
   params,
@@ -32,11 +40,73 @@ export default function ProjectDetailPage({
   const { id } = use(params);
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: tasks, isLoading: tasksLoading } = useTasks(id);
+  const router = useRouter();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
+  const deleteTask = useDeleteTask();
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<string>("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editStatus, setEditStatus] = useState<string>("active");
+  const [editPriority, setEditPriority] = useState<string>("");
+  const [editColor, setEditColor] = useState("#5B7FD6");
+
+  const openEditDialog = () => {
+    if (!project) return;
+    setEditTitle(project.title);
+    setEditDescription(project.description || "");
+    setEditStatus(project.status);
+    setEditPriority(project.priority || "");
+    setEditColor(project.color);
+    setEditOpen(true);
+  };
+
+  const handleSaveProject = async () => {
+    try {
+      await updateProject.mutateAsync({
+        id,
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        status: editStatus as "active" | "paused" | "completed" | "archived",
+        priority: (editPriority || null) as "low" | "medium" | "high" | "critical" | null,
+        color: editColor,
+      });
+      setEditOpen(false);
+      toast.success("Project updated", editTitle.trim());
+    } catch (err) {
+      toast.error("Failed to update project", (err as Error).message);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    try {
+      await deleteProject.mutateAsync(id);
+      toast.success("Project deleted");
+      router.push("/projects");
+    } catch (err) {
+      toast.error("Failed to delete project", (err as Error).message);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!deleteTaskId) return;
+    try {
+      await deleteTask.mutateAsync(deleteTaskId);
+      setDeleteTaskId(null);
+      toast.success("Task deleted");
+    } catch (err) {
+      toast.error("Failed to delete task", (err as Error).message);
+    }
+  };
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +117,13 @@ export default function ProjectDetailPage({
         projectId: id,
         title: newTaskTitle.trim(),
         status: "todo",
+        priority: (newTaskPriority || undefined) as "low" | "medium" | "high" | undefined,
+        dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
         sortOrder: (tasks?.length || 0) + 1,
       });
       setNewTaskTitle("");
+      setNewTaskPriority("");
+      setNewTaskDueDate("");
     } catch {
       // handled by mutation state
     }
@@ -113,8 +187,9 @@ export default function ProjectDetailPage({
             <Timer className="w-4 h-4" />
             Start Timer
           </Button>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal className="w-4 h-4" />
+          <Button variant="ghost" size="sm" onClick={openEditDialog}>
+            <Pencil className="w-4 h-4" />
+            Edit
           </Button>
         </div>
       }
@@ -157,18 +232,38 @@ export default function ProjectDetailPage({
 
             {/* Add task form */}
             {showAddTask && (
-              <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="Task title..."
-                  autoFocus
-                  className="flex-1 h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)]"
-                />
-                <Button type="submit" size="sm" disabled={!newTaskTitle.trim() || createTask.isPending}>
-                  {createTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
-                </Button>
+              <form onSubmit={handleAddTask} className="mb-4 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    placeholder="Task title..."
+                    autoFocus
+                    className="flex-1 h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)]"
+                  />
+                  <Button type="submit" size="sm" disabled={!newTaskTitle.trim() || createTask.isPending}>
+                    {createTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    className="h-8 px-2 text-xs rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] cursor-pointer"
+                  >
+                    <option value="">Priority...</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    className="h-8 px-2 text-xs rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] cursor-pointer"
+                  />
+                </div>
               </form>
             )}
 
@@ -224,6 +319,12 @@ export default function ProjectDetailPage({
                     >
                       {task.title}
                     </span>
+                    {task.dueDate && (
+                      <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(task.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
                     {task.priority && (
                       <Badge
                         size="sm"
@@ -236,6 +337,12 @@ export default function ProjectDetailPage({
                         {task.priority}
                       </Badge>
                     )}
+                    <button
+                      onClick={() => setDeleteTaskId(task.id)}
+                      className="flex-shrink-0 p-1 rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -329,8 +436,145 @@ export default function ProjectDetailPage({
 
           {/* Find Similar */}
           <FindSimilar entityId={id} entityType="project" />
+
+          {/* Danger Zone */}
+          <Card>
+            <h3 className="text-sm font-semibold text-[var(--danger)] mb-2">
+              Danger Zone
+            </h3>
+            <p className="text-xs text-[var(--text-tertiary)] mb-3">
+              Permanently delete this project and all its tasks.
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setDeleteProjectOpen(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Project
+            </Button>
+          </Card>
         </div>
       </div>
+
+      {/* Confirm Delete Project */}
+      <ConfirmDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        title="Delete Project?"
+        description={`This will permanently delete "${project.title}" and all associated tasks. This action cannot be undone.`}
+        confirmLabel="Delete Project"
+        onConfirm={handleDeleteProject}
+        loading={deleteProject.isPending}
+      />
+
+      {/* Confirm Delete Task */}
+      <ConfirmDialog
+        open={!!deleteTaskId}
+        onOpenChange={(open) => !open && setDeleteTaskId(null)}
+        title="Delete Task?"
+        description="This will permanently delete this task. This action cannot be undone."
+        confirmLabel="Delete Task"
+        onConfirm={handleDeleteTask}
+        loading={deleteTask.isPending}
+      />
+      {/* Edit Project Dialog */}
+      <Dialog.Root open={editOpen} onOpenChange={setEditOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content className="fixed left-1/2 top-[20%] -translate-x-1/2 w-full max-w-md z-50">
+            <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xl)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
+                <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Pencil className="w-4 h-4" />
+                  Edit Project
+                </Dialog.Title>
+                <Dialog.Close asChild>
+                  <button className="p-1 rounded-[var(--radius-sm)] hover:bg-[var(--surface-hover)] text-[var(--text-tertiary)] cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </Dialog.Close>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">Description</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value)}
+                      className="w-full h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] cursor-pointer"
+                    >
+                      {PROJECT_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">Priority</label>
+                    <select
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value)}
+                      className="w-full h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] cursor-pointer"
+                    >
+                      <option value="">None</option>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editColor}
+                      onChange={(e) => setEditColor(e.target.value)}
+                      className="w-9 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] cursor-pointer p-0.5"
+                    />
+                    <span className="text-xs text-[var(--text-tertiary)] font-mono">{editColor}</span>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Dialog.Close asChild>
+                    <Button variant="ghost" size="sm">Cancel</Button>
+                  </Dialog.Close>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveProject}
+                    disabled={!editTitle.trim() || updateProject.isPending}
+                  >
+                    {updateProject.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </PageShell>
   );
 }

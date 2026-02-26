@@ -6,10 +6,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lightbulb, Plus, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Lightbulb, Plus, LayoutGrid, List, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { STAGE_COLORS, type IdeaStage } from "@/lib/utils/constants";
-import { useIdeas, useCreateIdea, useUpdateIdea } from "@/lib/hooks/use-ideas";
+import { useIdeas, useCreateIdea, useUpdateIdea, useDeleteIdea } from "@/lib/hooks/use-ideas";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/lib/stores/toast-store";
 
 const stages: { label: string; value: IdeaStage; color: string }[] = [
   { label: "Spark", value: "spark", color: STAGE_COLORS.spark },
@@ -23,8 +25,21 @@ export default function IdeasPage() {
   const { data: ideas, isLoading } = useIdeas();
   const createIdea = useCreateIdea();
   const updateIdea = useUpdateIdea();
+  const deleteIdea = useDeleteIdea();
   const [newIdeaTitle, setNewIdeaTitle] = useState("");
   const [addingToStage, setAddingToStage] = useState<IdeaStage | null>(null);
+  const [deleteIdeaId, setDeleteIdeaId] = useState<string | null>(null);
+
+  const handleDeleteIdea = async () => {
+    if (!deleteIdeaId) return;
+    try {
+      await deleteIdea.mutateAsync(deleteIdeaId);
+      setDeleteIdeaId(null);
+      toast.success("Idea deleted");
+    } catch (err) {
+      toast.error("Failed to delete idea", (err as Error).message);
+    }
+  };
 
   const ideasByStage = (stage: IdeaStage) =>
     ideas?.filter((i) => i.stage === stage) || [];
@@ -145,9 +160,17 @@ export default function IdeasPage() {
                 <div className="space-y-2 min-h-[100px]">
                   {stageIdeas.map((idea) => (
                     <Card key={idea.id} padding="sm" interactive>
-                      <p className="text-sm font-medium text-[var(--text-primary)] mb-2 line-clamp-2">
-                        {idea.title}
-                      </p>
+                      <div className="flex items-start justify-between gap-1 mb-2">
+                        <p className="text-sm font-medium text-[var(--text-primary)] line-clamp-2">
+                          {idea.title}
+                        </p>
+                        <button
+                          onClick={() => setDeleteIdeaId(idea.id)}
+                          className="flex-shrink-0 p-0.5 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                       {idea.body && (
                         <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-2">
                           {idea.body}
@@ -199,6 +222,12 @@ export default function IdeasPage() {
                   <span className="text-xs text-[var(--text-tertiary)]">
                     {new Date(idea.createdAt).toLocaleDateString()}
                   </span>
+                  <button
+                    onClick={() => setDeleteIdeaId(idea.id)}
+                    className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-red-50 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -217,6 +246,16 @@ export default function IdeasPage() {
           </Card>
         )
       )}
+      {/* Confirm Delete Idea */}
+      <ConfirmDialog
+        open={!!deleteIdeaId}
+        onOpenChange={(open) => !open && setDeleteIdeaId(null)}
+        title="Delete Idea?"
+        description="This will permanently delete this idea. This action cannot be undone."
+        confirmLabel="Delete Idea"
+        onConfirm={handleDeleteIdea}
+        loading={deleteIdea.isPending}
+      />
     </PageShell>
   );
 }

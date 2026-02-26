@@ -92,6 +92,8 @@ interface AppState {
   // User preferences
   displayName: string;
   setDisplayName: (name: string) => void;
+  timezone: string;
+  setTimezone: (tz: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -160,12 +162,15 @@ export const useAppStore = create<AppState>()(
       // ── User ──
       displayName: "Jackie",
       setDisplayName: (name) => set({ displayName: name }),
+      timezone: "America/New_York",
+      setTimezone: (tz) => set({ timezone: tz }),
     }),
     {
       name: "mission-control-store",
       partialize: (state) => ({
         ui: { sidebarCollapsed: state.ui.sidebarCollapsed, theme: state.ui.theme },
         displayName: state.displayName,
+        timezone: state.timezone,
         timer: state.timer,
       }),
     }

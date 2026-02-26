@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   X,
@@ -9,6 +9,10 @@ import {
   BookOpen,
   Loader2,
   Plus,
+  Zap,
+  Calendar,
+  AlertTriangle,
+  ArrowDown,
 } from "lucide-react";
 import { useAppStore } from "@/lib/stores/app-store";
 import { useCreateTask } from "@/lib/hooks/use-tasks";
@@ -16,7 +20,9 @@ import { useCreateIdea } from "@/lib/hooks/use-ideas";
 import { useCreateKBArticle } from "@/lib/hooks/use-kb";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/lib/stores/toast-store";
+import { parseCapture, type CaptureResult } from "@/lib/ai/smart-capture";
 
 type CaptureType = "task" | "idea" | "article";
 
@@ -34,10 +40,39 @@ export function QuickCapture() {
   const [projectId, setProjectId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [taskPriority, setTaskPriority] = useState<"low" | "medium" | "high">("medium");
+  const [taskDueDate, setTaskDueDate] = useState("");
+
   const { data: projects } = useProjects();
   const createTask = useCreateTask();
   const createIdea = useCreateIdea();
   const createArticle = useCreateKBArticle();
+
+  // Smart capture: parse title in real-time
+  const parsed: CaptureResult | null = useMemo(() => {
+    if (!title.trim()) return null;
+    return parseCapture(title);
+  }, [title]);
+
+  // Auto-switch type based on smart capture detection
+  useEffect(() => {
+    if (!parsed) return;
+    const typeMap: Record<string, CaptureType> = {
+      task: "task",
+      idea: "idea",
+      kb_article: "article",
+    };
+    const detected = typeMap[parsed.type];
+    if (detected && detected !== type) {
+      setType(detected);
+    }
+    if (parsed.priority) {
+      setTaskPriority(parsed.priority);
+    }
+    if (parsed.dueDate) {
+      setTaskDueDate(parsed.dueDate);
+    }
+  }, [parsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Global shortcut: Cmd+Shift+Space or just the Plus button in header
   useEffect(() => {
@@ -64,26 +99,27 @@ export function QuickCapture() {
             return;
           }
           await createTask.mutateAsync({
-            title: title.trim(),
+            title: (parsed?.title || title).trim(),
             description: description.trim() || null,
             projectId,
             status: "todo",
-            priority: "medium",
+            priority: taskPriority,
+            dueDate: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
             sortOrder: 0,
           });
           toast.success("Task created", title.trim());
           break;
         case "idea":
           await createIdea.mutateAsync({
-            title: title.trim(),
+            title: (parsed?.title || title).trim(),
             body: description.trim() || null,
-            stage: "spark",
+            stage: parsed?.stage || "spark",
           });
           toast.success("Idea captured", title.trim());
           break;
         case "article":
           await createArticle.mutateAsync({
-            title: title.trim(),
+            title: (parsed?.title || title).trim(),
             content: description.trim() || "",
             pinned: false,
           });
@@ -95,6 +131,8 @@ export function QuickCapture() {
       setTitle("");
       setDescription("");
       setProjectId("");
+      setTaskPriority("medium");
+      setTaskDueDate("");
       setQuickCaptureOpen(false);
     } catch (err) {
       toast.error("Failed to create", (err as Error).message);
@@ -112,6 +150,8 @@ export function QuickCapture() {
           setTitle("");
           setDescription("");
           setProjectId("");
+          setTaskPriority("medium");
+          setTaskDueDate("");
         }
       }}
     >
@@ -177,6 +217,36 @@ export function QuickCapture() {
                   }
                 }}
               />
+
+              {/* Smart Capture Badges */}
+              {parsed && title.trim() && (parsed.priority || parsed.dueDate) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--text-tertiary)]">
+                    <Zap className="w-3 h-3 text-[var(--accent-500)]" />
+                    Detected:
+                  </div>
+                  {parsed.priority && (
+                    <Badge
+                      size="sm"
+                      variant={
+                        parsed.priority === "high" ? "danger"
+                          : parsed.priority === "low" ? "default"
+                          : "warning"
+                      }
+                    >
+                      {parsed.priority === "high" && <AlertTriangle className="w-3 h-3" />}
+                      {parsed.priority === "low" && <ArrowDown className="w-3 h-3" />}
+                      {parsed.priority} priority
+                    </Badge>
+                  )}
+                  {parsed.dueDate && (
+                    <Badge size="sm" variant="info">
+                      <Calendar className="w-3 h-3" />
+                      Due {parsed.dueDate}
+                    </Badge>
+                  )}
+                </div>
+              )}
 
               {/* Project selector (for tasks only) */}
               {type === "task" && (

@@ -19,6 +19,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import { toast } from "@/lib/stores/toast-store";
 import {
   useIntegrations,
   useSaveIntegrationConfig,
@@ -217,8 +218,9 @@ function IntegrationConfigCard({
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
   const { data: integrations, isLoading: integrationsLoading } = useIntegrations();
-  const { displayName, setDisplayName, ui: { theme }, setTheme } = useAppStore();
+  const { displayName, setDisplayName, timezone, setTimezone, ui: { theme }, setTheme } = useAppStore();
   const [nameInput, setNameInput] = useState(displayName);
+  const [tzInput, setTzInput] = useState(timezone);
 
   return (
     <PageShell title="Settings" description="Configure your Mission Control">
@@ -268,18 +270,27 @@ export default function SettingsPage() {
                   <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
                     Timezone
                   </label>
-                  <select className="w-full max-w-sm h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)]">
-                    <option>America/New_York</option>
-                    <option>America/Chicago</option>
-                    <option>America/Denver</option>
-                    <option>America/Los_Angeles</option>
-                    <option>UTC</option>
+                  <select
+                    value={tzInput}
+                    onChange={(e) => setTzInput(e.target.value)}
+                    className="w-full max-w-sm h-9 px-3 text-sm rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] cursor-pointer"
+                  >
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Chicago">America/Chicago</option>
+                    <option value="America/Denver">America/Denver</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Berlin">Europe/Berlin</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="UTC">UTC</option>
                   </select>
                 </div>
                 <Button
                   size="sm"
                   onClick={() => {
                     setDisplayName(nameInput);
+                    setTimezone(tzInput);
+                    toast.success("Settings saved", "Your profile has been updated.");
                   }}
                 >
                   Save Changes
