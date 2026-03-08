@@ -97,7 +97,9 @@ const gmailData = {
   lastFetched: now.toISOString(),
 };
 
-async function upsertConfig(provider: string) {
+type Provider = "asana" | "gmail" | "calendar" | "github";
+
+async function upsertConfig(provider: Provider) {
   const [existing] = await db
     .select({ id: integrationConfigs.id })
     .from(integrationConfigs)
